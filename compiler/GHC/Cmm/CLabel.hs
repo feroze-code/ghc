@@ -757,6 +757,8 @@ hasHaskellName _               = Nothing
 hasCAF :: CLabel -> Bool
 hasCAF (IdLabel _ _ RednCounts) = False -- Note [ticky for LNE]
 hasCAF (IdLabel _ MayHaveCafRefs _) = True
+hasCAF (RtsLabel RtsMkStringInfoTable) = True
+  -- The info table stg_MK_STRING_info is for thunks
 hasCAF _                            = False
 
 -- Note [ticky for LNE]

@@ -106,7 +106,6 @@ cgTopRhsClosure dflags rec id ccs upd_flag args body =
     | StgApp f [arg] <- stripStgTicksTopE (not . tickishIsCode) body
     , idName f == unpackCStringName
     = do -- TODO: What to do with ticks?
-         pprTrace "unpackCString#" (ppr body) (return ())
          arg' <- getArgAmode (NonVoid arg)
          case arg' of
            CmmLit lit -> do
@@ -118,17 +117,7 @@ cgTopRhsClosure dflags rec id ccs upd_flag args body =
                    , cit_clo = Nothing
                    }
              emitDecl $ CmmData (Section Data closure_label) $
-                 -- CmmStatics closure_label info ccs payload
-                 let platform = targetPlatform dflags
-                     layout =
-                       [ CmmLabel (cit_lbl info) -- info ptr
-                       , mkIntCLit platform 0 -- padding for indirectee after update
-                       , mkIntCLit platform 0 -- static link
-                       , mkIntCLit platform 0 -- saved info
-                       , lit -- the payload! TODO FIXME HACK: we have to put it here as we don't support payload in top-level closures!!!!!
-                       ]
-                  in CmmStaticsRaw closure_label (map CmmStaticLit layout)
-
+                 CmmStatics closure_label info ccs [] [lit]
            _ -> panic "cgTopRhsClosure.gen_code"
 
 
