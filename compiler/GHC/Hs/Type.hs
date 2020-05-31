@@ -1387,19 +1387,22 @@ splitLHsQualTy body              = (noLHsContext, body)
 -- such as @(forall <tvs>. <...>)@. The downside to this is that it is not
 -- generally possible to take the returned types and reconstruct the original
 -- type (parentheses and all) from them.
+-- TODO RGS: Change all the comments here
 splitLHsInstDeclTy :: LHsSigType GhcRn
                    -> ([Name], LHsContext GhcRn, LHsType GhcRn)
 -- Split up an instance decl type, returning the pieces
 splitLHsInstDeclTy (HsIB { hsib_ext = itkvs
                          , hsib_body = inst_ty })
-  | (tvs, cxt, body_ty) <- splitLHsSigmaTyInvis inst_ty
+  | (tvs, rho_ty)  <- split_forall inst_ty
+  , (cxt, body_ty) <- split_ctxt rho_ty
   = (itkvs ++ hsLTyVarNames tvs, cxt, body_ty)
          -- Return implicitly bound type and kind vars
          -- For an instance decl, all of them are in scope
 
 getLHsInstDeclHead :: LHsSigType (GhcPass p) -> LHsType (GhcPass p)
 getLHsInstDeclHead inst_ty
-  | (_tvs, _cxt, body_ty) <- splitLHsSigmaTyInvis (hsSigType inst_ty)
+  | (_tvs, rho_ty)  <- split_forall (hsSigType inst_ty)
+  , (_cxt, body_ty) <- split_ctxt rho_ty
   = body_ty
 
 getLHsInstDeclClass_maybe :: LHsSigType (GhcPass p)
@@ -1409,6 +1412,27 @@ getLHsInstDeclClass_maybe inst_ty
   = do { let head_ty = getLHsInstDeclHead inst_ty
        ; cls <- hsTyGetAppHead_maybe head_ty
        ; return cls }
+
+-- TODO RGS: Better names and docs
+-- TODO RGS: Combine these with the helper functions from
+-- splitLHsGADTPrefixTy in !3337?
+
+-- NB: We do not use splitLHsForAllTyInvis below, since that looks through
+-- parentheses...
+split_forall :: LHsType pass -> ([LHsTyVarBndr Specificity pass], LHsType pass)
+split_forall (L _ (HsForAllTy { hst_fvf = ForallInvis, hst_bndrs = bndrs
+                              , hst_body = rho }))
+  = (bndrs, rho)
+split_forall sigma
+  = ([], sigma)
+
+-- ...similarly, we do not use splitLHsQualTy below, since that also looks
+-- through parentheses.
+split_ctxt :: LHsType pass -> (LHsContext pass, LHsType pass)
+split_ctxt (L _ (HsQualTy { hst_ctxt = cxt, hst_body = tau }))
+  = (cxt, tau)
+split_ctxt tau
+  = (noLHsContext, tau)
 
 {-
 ************************************************************************
