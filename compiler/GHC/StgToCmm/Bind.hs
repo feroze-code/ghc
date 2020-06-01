@@ -103,7 +103,8 @@ cgTopRhsClosure dflags rec id ccs upd_flag args body =
          emitDataCon closure_label indStaticInfoTable ccs [unLit (idInfoToAmode cg_info)]
 
   gen_code _ _ closure_label
-    | StgApp f [arg] <- stripStgTicksTopE (not . tickishIsCode) body
+    | null args
+    , StgApp f [arg] <- stripStgTicksTopE (not . tickishIsCode) body
     , idName f == unpackCStringName
     = do -- TODO: What to do with ticks?
          arg' <- getArgAmode (NonVoid arg)
